@@ -10,3 +10,6 @@ mvn clean install -> To build and run the unit test
 mvn test -> To only run the unit test
 
 unit test runs for 10 secs sending and recieving requests
+
+
+Can also check the output at url : http://localhost:8080/statistics
