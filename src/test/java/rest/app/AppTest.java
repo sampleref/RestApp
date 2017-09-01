@@ -1,7 +1,5 @@
 package rest.app;
 
-import com.despegar.http.client.HttpClientException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.restassured.http.ContentType;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -31,24 +29,23 @@ public class AppTest {
     }
 
     @Test
-    public void testStatistics() throws HttpClientException, IOException, InterruptedException {
-        postData();
+    public void testStatistics() throws IOException, InterruptedException {
+        for(int index = 1000; index > 0; index--){
+            postData();
+        }
         readData();
-        Thread.sleep(10000);
+        postDataOlder();
+        Thread.sleep(300000);
     }
 
     private static void readData() {
-        Thread readThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                while (true) {
-                    logger.info("Output /statistics");
-                    get("/statistics").then().log().body();
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        logger.error(e);
-                    }
+        Thread readThread = new Thread(() -> {
+            while (true) {
+                get("http://localhost:8081/statistics").then().log().body();
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    logger.error(e);
                 }
             }
         });
@@ -56,20 +53,35 @@ public class AppTest {
     }
 
     private static void postData() {
-        Thread postThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                while (true) {
-                    given().body(getRandomAmountWithTimestamp()).accept(ContentType.JSON).
-                            expect().
-                            statusCode(201).
-                            when().
-                            post("/transactions");
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        logger.error(e);
-                    }
+        Thread postThread = new Thread(() -> {
+            while (true) {
+                given().body(getRandomAmountWithTimestamp()).accept(ContentType.JSON).
+                        expect().
+                        statusCode(201).
+                        when().
+                        post("/transactions");
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    logger.error(e);
+                }
+            }
+        });
+        postThread.start();
+    }
+
+    private static void postDataOlder() {
+        Thread postThread = new Thread(() -> {
+            while (true) {
+                given().body(getRandomAmountWithOlderTimestamp()).accept(ContentType.JSON).
+                        expect().
+                        statusCode(204).
+                        when().
+                        post("/transactions");
+                try {
+                    Thread.sleep(10000);
+                } catch (InterruptedException e) {
+                    logger.error(e);
                 }
             }
         });
@@ -78,8 +90,17 @@ public class AppTest {
 
     private static String getRandomAmountWithTimestamp() {
         double amount = 1000 + (2000 - 1000) * random.nextDouble();
+        amount = (double) Math.round(amount * 100) / 100;
         ZonedDateTime utc = ZonedDateTime.now(ZoneOffset.UTC);
-        long timestamp = utc.toEpochSecond() * 1000;
+        long timestamp = utc.toInstant().toEpochMilli();
+        return "{\"amount\": \"" + amount + "\",\"timestamp\": \"" + timestamp + "\"}";
+    }
+
+    private static String getRandomAmountWithOlderTimestamp() {
+        double amount = 1000 + (2000 - 1000) * random.nextDouble();
+        amount = (double) Math.round(amount * 100) / 100;
+        ZonedDateTime utc = ZonedDateTime.now(ZoneOffset.UTC);
+        long timestamp = utc.toInstant().toEpochMilli() - 60010;
         return "{\"amount\": \"" + amount + "\",\"timestamp\": \"" + timestamp + "\"}";
     }
 
